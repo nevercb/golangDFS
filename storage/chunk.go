@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"fmt"
 	"io"
 	"os"
-	"strconv"
+	"path/filepath"
+	"time"
 )
 
 const ChunkSize = 1024 * 1024
@@ -13,7 +15,14 @@ func SplitFile(filePath string, destDir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer file.Close()
+
+	uniqueDir := filepath.Join(destDir, fmt.Sprintf("%d", time.Now().UnixNano()))
+	err = os.MkdirAll(uniqueDir, os.ModePerm)
+	if err != nil {
+		return nil, fmt.Errorf("error creating unique directory: %w", err)
+	}
 
 	var chunkPaths []string
 	buffer := make([]byte, ChunkSize)
@@ -22,7 +31,9 @@ func SplitFile(filePath string, destDir string) ([]string, error) {
 	for {
 		n, err := file.Read(buffer)
 		if n > 0 {
-			chunkPath := destDir + "/chunk_" + strconv.Itoa(index)
+			// 创建唯一的分块文件
+			chunkFileName := fmt.Sprintf("chunk_%d", index)
+			chunkPath := filepath.Join(uniqueDir, chunkFileName)
 			chunkFile, err := os.Create(chunkPath)
 			if err != nil {
 				return nil, err
