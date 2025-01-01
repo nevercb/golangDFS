@@ -1,0 +1,32 @@
+{
+  "testfile": {
+    "file_name": "testfile",
+    "chunk_metas": [
+      {
+        "path": "chunks/testfile/chunk_1",
+        "checksum": "7cef01c57603ca7515e7dec122433a762d6e5e708bc2224b8c78ba9037621134",
+        "chunk_size": 1048576
+      },
+      {
+        "path": "chunks/testfile/chunk_2",
+        "checksum": "e949c8ed81467642fc8395a5a24bf1e81e98b9bac6ef4bc7218103e902d14268",
+        "chunk_size": 1048576
+      },
+      {
+        "path": "chunks/testfile/chunk_3",
+        "checksum": "7c2eb46b7a8432311d25aed4bee784ba22a400fa2a5713bcc323f5845624ae8f",
+        "chunk_size": 1048576
+      },
+      {
+        "path": "chunks/testfile/chunk_4",
+        "checksum": "2a82674d5355e79bb7ae89ef6f657f18b2498f8d5c2cbf0def1bf82d64f9cf5e",
+        "chunk_size": 1048576
+      },
+      {
+        "path": "chunks/testfile/chunk_0",
+        "checksum": "05953c3d74c1288e2298e939b5cece51fab0704f5392dbae568a7cf3bebc4d01",
+        "chunk_size": 32
+      }
+    ]
+  }
+}
