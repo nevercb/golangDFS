@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 const ChunkSize = 1024 * 1024 // 每块大小为 1MB
@@ -19,58 +18,79 @@ type ChunkMetadata struct {
 	ChunkSize int64  `json:"chunk_size"`
 }
 
-func SplitFile(filePath string, destDir string) ([]ChunkMetadata, error) {
-	file, err := os.Open(filePath)
+// SplitFileFromStream 从文件流分块，并支持断点续传
+func SplitFileFromStream(file io.Reader, destDir string, existingChunks []ChunkMetadata) ([]ChunkMetadata, error) {
+	// 确保分块目录存在
+	err := os.MkdirAll(destDir, os.ModePerm)
 	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	uniqueDir := filepath.Join(destDir, fmt.Sprintf("%d", time.Now().UnixNano()))
-	err = os.MkdirAll(uniqueDir, os.ModePerm)
-	if err != nil {
-		return nil, fmt.Errorf("error creating unique directory: %w", err)
+		return nil, fmt.Errorf("error creating chunk directory: %w", err)
 	}
 
 	var chunks []ChunkMetadata
 	buffer := make([]byte, ChunkSize)
 	index := 0
+	skippedChunks := 0
+	regeneratedChunks := 0
 
 	for {
+		// 读取分块数据
 		n, err := file.Read(buffer)
 		if n > 0 {
-			// 创建唯一的分块文件
+			// 计算当前分块校验和
+			chunkHash := sha256.Sum256(buffer[:n])
+			checksum := hex.EncodeToString(chunkHash[:])
+
+			// 检查是否已有相同的分块
+			var existingChunk *ChunkMetadata
+			if index < len(existingChunks) {
+				existingChunk = &existingChunks[index]
+			}
+
+			if existingChunk != nil && existingChunk.Checksum == checksum && existingChunk.ChunkSize == int64(n) {
+				if _, err := os.Stat(existingChunk.Path); os.IsNotExist(err) {
+					fmt.Printf("Chunk file missing, regenerating: %s\n", existingChunk.Path)
+				} else {
+					fmt.Printf("Skipping chunk %d: %s\n", index, existingChunk.Path)
+					chunks = append(chunks, *existingChunk)
+					skippedChunks++
+					index++
+					continue
+				}
+			}
+
+			// 否则，重新生成分块
 			chunkFileName := fmt.Sprintf("chunk_%d", index)
-			chunkPath := filepath.Join(uniqueDir, chunkFileName)
+			chunkPath := filepath.Join(destDir, chunkFileName)
 			chunkFile, err := os.Create(chunkPath)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create chunk file: %w", err)
 			}
 			_, writeErr := chunkFile.Write(buffer[:n])
-			defer chunkFile.Close()
+			chunkFile.Close()
 			if writeErr != nil {
-				return nil, writeErr
+				return nil, fmt.Errorf("failed to write chunk file: %w", writeErr)
 			}
-			// 计算分块的校验和
-			hash := sha256.Sum256(buffer[:n])
-			checksum := hex.EncodeToString(hash[:])
 
-			// 保存分块元数据
+			// 保存新分块元数据
 			chunks = append(chunks, ChunkMetadata{
 				Path:      chunkPath,
 				Checksum:  checksum,
 				ChunkSize: int64(n),
 			})
+			regeneratedChunks++
+			fmt.Printf("Regenerated chunk %d: %s\n", index, chunkPath)
 			index++
 		}
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error reading file: %w", err)
 		}
 	}
+
+	// 打印跳过和重新生成的分块统计
+	fmt.Printf("File split complete: %d chunks skipped, %d chunks regenerated\n", skippedChunks, regeneratedChunks)
 	return chunks, nil
 }
 

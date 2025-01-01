@@ -2,6 +2,7 @@ package main
 
 import (
 	"dfs/metadata"
+	"dfs/network"
 	"fmt"
 	"os"
 )
@@ -15,10 +16,15 @@ func main() {
 	}
 	fmt.Println("Metadata loaded successfully.")
 
+	// 启动 HTTP 服务（添加断点续传）
+	go func() {
+		network.StartServer("8080")
+	}()
+
 	// 提供用户操作选项
 	for {
 		fmt.Println("\nChoose an option:")
-		fmt.Println("1. Upload and split file")
+		fmt.Println("1. Upload and split file (stream)")
 		fmt.Println("2. Merge file")
 		fmt.Println("3. Show metadata")
 		fmt.Println("4. Save metadata to file")
@@ -51,21 +57,43 @@ func uploadAndSplitFile() {
 	fmt.Print("Enter the file path to upload: ")
 	fmt.Scan(&filePath)
 
+	// Debugging: 打印输入的文件路径和当前工作目录
+	fmt.Printf("Entered file path: %s\n", filePath)
+
+	// 获取当前工作目录
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error getting current working directory:", err)
+		return
+	}
+	fmt.Printf("Current working directory: %s\n", cwd)
+
 	// 检查文件是否存在
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		fmt.Println("File does not exist:", filePath)
+		fmt.Printf("File does not exist: %s\n", filePath)
 		return
 	}
 
-	// 分块并生成元数据
-	metadata, err := metadata.CreateFileMetadata(filePath, "./chunks")
+	// 打开文件作为流
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer file.Close()
+
+	// 确定分块目录
+	chunkDir := "./chunks"
+
+	// 使用流式分块逻辑
+	meta, err := metadata.CreateFileMetadataFromStream(file, chunkDir, nil)
 	if err != nil {
 		fmt.Println("Error splitting file:", err)
 		return
 	}
 
 	fmt.Println("File uploaded and split successfully.")
-	fmt.Printf("Metadata: %+v\n", metadata)
+	fmt.Printf("Metadata: %+v\n", meta)
 }
 
 func mergeFile() {

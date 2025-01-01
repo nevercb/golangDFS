@@ -3,7 +3,9 @@ package metadata
 import (
 	"dfs/storage"
 	"encoding/json"
+	"io"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -22,7 +24,7 @@ var (
 // MetadataFile 文件元数据的持久化存储路径
 const MetadataFile = "metadata.json"
 
-// AddMetadata 新增文件元数据
+// AddMetadata 新增或更新文件元数据
 func AddMetadata(fileName string, metadata FileMetadata) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -77,22 +79,22 @@ func LoadMetadata() error {
 	return json.Unmarshal(data, &MetadataMap)
 }
 
-// CreateFileMetadata 使用 storage 包的 SplitFile，将文件分块并生成元数据
-func CreateFileMetadata(filePath, destDir string) (FileMetadata, error) {
-	// 调用 storage.SplitFile 分块文件
-	chunks, err := storage.SplitFile(filePath, destDir)
+// CreateFileMetadataFromStream 从文件流创建分块元数据
+func CreateFileMetadataFromStream(file io.Reader, destDir string, existingChunks []storage.ChunkMetadata) (FileMetadata, error) {
+	// 调用 SplitFileFromStream 分块文件
+	chunks, err := storage.SplitFileFromStream(file, destDir, existingChunks)
 	if err != nil {
 		return FileMetadata{}, err
 	}
 
 	// 创建 FileMetadata
 	metadata := FileMetadata{
-		FileName:   filePath,
+		FileName:   filepath.Base(destDir),
 		ChunkMetas: chunks,
 	}
 
 	// 添加到 MetadataMap
-	AddMetadata(filePath, metadata)
+	AddMetadata(filepath.Base(destDir), metadata)
 
 	return metadata, nil
 }

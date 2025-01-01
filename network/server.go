@@ -1,16 +1,35 @@
 package network
 
 import (
+	"dfs/metadata"
 	"dfs/storage"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
+	"path/filepath"
 )
 
-// UploadHandler 处理文件上传并进行分块
+// UploadHandler 处理文件上传并进行分块（支持断点续传）
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
+	// 从请求中读取文件名
+	fileName := r.FormValue("fileName")
+	if fileName == "" {
+		http.Error(w, "File name is required", http.StatusBadRequest)
+		return
+	}
+
+	// 确定分块目录（基于文件名生成固定目录）
+	chunkDir := filepath.Join("./chunks", fileName)
+
+	// 检查元数据，获取已有的分块信息
+	var existingChunks []storage.ChunkMetadata
+	if meta, exists := metadata.GetMetadata(fileName); exists {
+		existingChunks = meta.ChunkMetas
+		fmt.Printf("Existing chunks loaded for file %s: %+v\n", fileName, existingChunks)
+	} else {
+		fmt.Printf("No existing chunks found for file %s\n", fileName)
+	}
+
 	// 从请求中读取文件
 	file, _, err := r.FormFile("file")
 	if err != nil {
@@ -19,26 +38,8 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// 创建临时文件
-	tempFile, err := os.CreateTemp("", "upload-*.tmp")
-	if err != nil {
-		http.Error(w, "Unable to create temp file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer func() {
-		tempFile.Close()
-		os.Remove(tempFile.Name()) // 删除临时文件
-	}()
-
-	// 将上传的文件保存到临时文件
-	_, err = io.Copy(tempFile, file)
-	if err != nil {
-		http.Error(w, "Unable to save file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// 分块文件
-	chunks, err := storage.SplitFile(tempFile.Name(), "./chunks")
+	// 分块文件，支持断点续传
+	meta, err := metadata.CreateFileMetadataFromStream(file, chunkDir, existingChunks)
 	if err != nil {
 		http.Error(w, "Unable to split file: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -46,7 +47,8 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 返回分块元数据
 	response := map[string]interface{}{
-		"chunks": chunks,
+		"fileName": fileName,
+		"chunks":   meta.ChunkMetas,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
