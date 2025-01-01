@@ -1,6 +1,6 @@
 # Golang Distrubuted File System
 
-* Functionality:
+## Functionality:
   * spliting file into chunks, uploading chunks.
   * merging file chunks.
   * metadata management(add, save, load).
@@ -8,8 +8,8 @@
   * resumable upload (both server and client side)
   * ...
 
-* test  
-测试完整文件上传:
+## test  
+* 测试完整文件上传:
 选择菜单选项 1，上传整个文件并分块：
 
 Choose an option:
@@ -24,12 +24,12 @@ Enter the file path to upload: /path/to/testfile
 ./chunks/testfile/chunk_0
 ./chunks/testfile/chunk_1
 ...
-使用选项 3 查看元数据：
+* 使用选项 3 查看元数据：
 Metadata: 
 File: testfile
 Metadata: {FileName:testfile ChunkMetas:[{Path:./chunks/testfile/chunk_0 Checksum:... ChunkSize:...} ...]}
 
-测试客户端断点续传:
+* 测试客户端断点续传:
 模拟部分分块丢失
 手动删除服务端的部分分块。例如，删除 chunk_1 和 chunk_3：
 rm ./chunks/testfile/chunk_1
@@ -41,7 +41,7 @@ Choose an option:
 5. Test client-side resumable upload
 ...
 Enter your choice: 5
-输入测试文件路径和服务端地址：
+* 输入测试文件路径和服务端地址：
 Enter the file path to upload: /path/to/testfile
 Enter the server URL (e.g., http://localhost:8080): http://localhost:8080
 客户端会调用 /checkChunks 接口，获取服务端已有的分块信息。
@@ -49,4 +49,4 @@ Enter the server URL (e.g., http://localhost:8080): http://localhost:8080
 Existing chunks for file testfile: [{Path:./chunks/testfile/chunk_0 Checksum:... ChunkSize:...} ...]
 Uploading chunk 1
 Uploading chunk 3
-检查服务端是否重新生成了丢失的分块文件。
+* 检查服务端是否重新生成了丢失的分块文件。
