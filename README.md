@@ -5,4 +5,5 @@
   * merging file chunks.
   * metadata management(add, save, load).
   * File chunks hash verification.
+  * resumable upload (both server and client side)
   * ...
