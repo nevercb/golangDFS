@@ -7,6 +7,11 @@
   * File chunks hash verification.
   * resumable upload (both server and client side)
   * ...
+## Pending to do
+  * 文件秒传
+  * 分布式多节点存储
+  * 支持客户端Range请求
+  * ....
 
 ## test  
 * 测试完整文件上传
@@ -18,7 +23,6 @@ Choose an option:
 ...
 Enter your choice: 1
 输入要上传的文件路径，例如：
-
 Enter the file path to upload: /path/to/testfile
 服务端会将文件分块并保存到 ./chunks/testfile/ 目录下，同时会记录分块元数据。
 检查服务端是否生成了分块文件和元数据，您可以在 ./chunks/ 目录中看到分块文件，例如：
